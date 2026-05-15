@@ -29,9 +29,9 @@ CREATE TABLE IF NOT EXISTS questions (
 CREATE INDEX IF NOT EXISTS idx_questions_session ON questions(session_id, sequence_num);
 CREATE INDEX IF NOT EXISTS idx_game_state_status ON game_state(status);
 
--- 启用 Realtime（实时同步）
-ALTER PUBLICATION supabase_realtime ADD TABLE game_state;
-ALTER PUBLICATION supabase_realtime ADD TABLE questions;
+-- 启用 Realtime（新版 Supabase 已自动包含，此行可选；若报错跳过即可）
+-- ALTER PUBLICATION supabase_realtime ADD TABLE game_state;
+-- ALTER PUBLICATION supabase_realtime ADD TABLE questions;
 
 -- RLS 策略：允许所有人读取
 ALTER TABLE game_state ENABLE ROW LEVEL SECURITY;
