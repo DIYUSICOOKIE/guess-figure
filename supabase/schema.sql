@@ -9,8 +9,12 @@ CREATE TABLE IF NOT EXISTS game_state (
   status TEXT NOT NULL DEFAULT 'playing',
   question_count INTEGER NOT NULL DEFAULT 0,
   guessed_by TEXT NOT NULL DEFAULT '',
+  difficulty TEXT NOT NULL DEFAULT 'normal',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- 如果表已存在但缺少 difficulty 字段，运行下面这行：
+-- ALTER TABLE game_state ADD COLUMN IF NOT EXISTS difficulty TEXT NOT NULL DEFAULT 'normal';
 
 -- 问答记录表
 CREATE TABLE IF NOT EXISTS questions (

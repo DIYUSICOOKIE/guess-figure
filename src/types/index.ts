@@ -1,3 +1,5 @@
+export type Difficulty = 'easy' | 'normal' | 'hard';
+
 export interface GameState {
   id: string;
   current_figure: string;
@@ -5,6 +7,7 @@ export interface GameState {
   status: 'playing' | 'completed';
   question_count: number;
   guessed_by: string;
+  difficulty: Difficulty;
   created_at: string;
 }
 
@@ -30,5 +33,6 @@ export interface GuessedFigureSummary {
   figure_name: string;
   question_count: number;
   guessed_by: string;
+  difficulty: Difficulty;
   created_at: string;
 }

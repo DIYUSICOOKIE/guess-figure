@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
       const text = await req.text();
       if (text) body = JSON.parse(text);
     } catch { /* empty body is ok */ }
-    const { force = false } = body;
+    const { force = false, difficulty = 'normal' } = body;
 
     const supabase = getServerClient();
 
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     const previousFigures = (previous || []).map((r) => r.current_figure);
 
     // AI 生成新人物
-    const figure = await generateFigure(previousFigures);
+    const figure = await generateFigure(previousFigures, difficulty as 'easy' | 'normal' | 'hard');
 
     // 创建新游戏
     const { data: session, error } = await supabase
@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
         figure_context: figure.context,
         status: 'playing',
         question_count: 0,
+        difficulty: difficulty as string,
       })
       .select()
       .single();

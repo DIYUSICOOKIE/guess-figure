@@ -35,6 +35,7 @@ export default function HomePage() {
   const [history, setHistory] = useState<GuessedFigureSummary[]>([]);
   const [selectedFigure, setSelectedFigure] = useState<GuessedFigureSummary | null>(null);
   const [historyQuestions, setHistoryQuestions] = useState<Question[]>([]);
+  const [difficulty, setDifficulty] = useState<'easy' | 'normal' | 'hard'>('normal');
   const [loading, setLoading] = useState(true);
   const [initError, setInitError] = useState('');
   const [retryKey, setRetryKey] = useState(0);
@@ -68,7 +69,11 @@ export default function HomePage() {
       setInitError('');
 
       try {
-        const res = await fetch('/api/new-game', { method: 'POST' });
+        const res = await fetch('/api/new-game', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ difficulty }),
+        });
         const data = await res.json();
 
         if (!res.ok || data.error) {
@@ -81,7 +86,7 @@ export default function HomePage() {
 
         const { data: completed, error: historyErr } = await supabase
           .from('game_state')
-          .select('id, current_figure, question_count, guessed_by, created_at')
+          .select('id, current_figure, question_count, guessed_by, difficulty, created_at')
           .eq('status', 'completed')
           .order('created_at', { ascending: false })
           .limit(20);
@@ -95,6 +100,7 @@ export default function HomePage() {
               figure_name: r.current_figure,
               question_count: r.question_count,
               guessed_by: r.guessed_by,
+              difficulty: r.difficulty || 'normal',
               created_at: r.created_at,
             }))
           );
@@ -137,6 +143,7 @@ export default function HomePage() {
                     figure_name: updated.current_figure,
                     question_count: updated.question_count,
                     guessed_by: updated.guessed_by,
+                    difficulty: (updated as GameState).difficulty || 'normal',
                     created_at: updated.created_at,
                   },
                   ...prev,
@@ -218,11 +225,35 @@ export default function HomePage() {
         </div>
       )}
 
+      {/* Difficulty Selector */}
+      <div className="mb-6">
+        <div className="flex justify-center gap-2">
+          {([
+            ['easy', '😊 简单'],
+            ['normal', '🤔 普通'],
+            ['hard', '💀 困难'],
+          ] as const).map(([value, label]) => (
+            <button
+              key={value}
+              onClick={() => setDifficulty(value)}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all
+                ${difficulty === value
+                  ? 'bg-amber-400 text-white shadow-sm'
+                  : 'bg-white text-gray-400 hover:bg-amber-50 hover:text-amber-600 border border-gray-100'
+                }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Current Game */}
       {currentGame ? (
         <div className="mb-10">
           <GameCard
             questionCount={currentGame.question_count}
+            difficulty={currentGame.difficulty || 'normal'}
             onClick={() => router.push('/play')}
           />
         </div>

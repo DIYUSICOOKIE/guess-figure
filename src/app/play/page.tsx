@@ -232,7 +232,7 @@ export default function PlayPage() {
       const res = await fetch('/api/new-game', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ force: true }),
+        body: JSON.stringify({ force: true, difficulty: session?.difficulty || 'normal' }),
       });
       const data = await res.json();
       if (data.session) setSession(data.session);
@@ -256,8 +256,14 @@ export default function PlayPage() {
         <h1 className="text-base font-semibold text-gray-700 flex-1 text-center mr-6">
           猜历史人物
         </h1>
-        <span className="text-xs text-gray-400">
-          已提问 {session?.question_count || 0} 次
+        <span className="text-xs text-gray-400 flex items-center gap-2">
+          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium
+            ${session?.difficulty === 'easy' ? 'bg-emerald-100 text-emerald-600' :
+              session?.difficulty === 'hard' ? 'bg-red-100 text-red-500' :
+              'bg-amber-100 text-amber-600'}`}>
+            {session?.difficulty === 'easy' ? '简单' : session?.difficulty === 'hard' ? '困难' : '普通'}
+          </span>
+          提问 {session?.question_count || 0}
         </span>
       </div>
 
