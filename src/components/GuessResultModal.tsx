@@ -4,6 +4,7 @@ interface Props {
   figureName: string;
   guessedBy: string;
   questionCount: number;
+  isSurrender?: boolean;
   onNewGame: () => void;
   onGoHome: () => void;
 }
@@ -12,15 +13,21 @@ export default function GuessResultModal({
   figureName,
   guessedBy,
   questionCount,
+  isSurrender,
   onNewGame,
   onGoHome,
 }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 text-center animate-in">
-        <div className="text-5xl mb-3">🎉</div>
+        <div className="text-5xl mb-3">{isSurrender ? '🏳️' : '🎉'}</div>
 
-        {guessedBy ? (
+        {isSurrender ? (
+          <>
+            <h2 className="text-xl font-bold text-gray-800 mb-1">答案揭晓</h2>
+            <p className="text-sm text-gray-400 mb-1">没关系，下次加油！</p>
+          </>
+        ) : guessedBy ? (
           <h2 className="text-xl font-bold text-gray-800 mb-1">
             {guessedBy} 猜对了！
           </h2>

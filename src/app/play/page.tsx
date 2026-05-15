@@ -32,6 +32,7 @@ export default function PlayPage() {
   const [showResult, setShowResult] = useState(false);
   const [resultFigure, setResultFigure] = useState('');
   const [resultGuessedBy, setResultGuessedBy] = useState('');
+  const [isSurrender, setIsSurrender] = useState(false);
 
   const timelineRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -193,10 +194,37 @@ export default function PlayPage() {
     }
   }, [input, sending, session, profile]);
 
+  const handleSurrender = useCallback(async () => {
+    if (!session) return;
+    setSending(true);
+    setError('');
+    try {
+      const res = await fetch('/api/surrender', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: session.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || '投降失败');
+        return;
+      }
+      setResultFigure(data.figureName);
+      setResultGuessedBy('');
+      setIsSurrender(true);
+      setShowResult(true);
+    } catch {
+      setError('网络错误');
+    } finally {
+      setSending(false);
+    }
+  }, [session]);
+
   const handleNewGame = useCallback(async () => {
     setShowResult(false);
     setResultFigure('');
     setResultGuessedBy('');
+    setIsSurrender(false);
     setQuestions([]);
     setError('');
 
@@ -273,14 +301,27 @@ export default function PlayPage() {
             {sending ? '...' : '发送'}
           </button>
         </div>
+        {session?.status !== 'completed' && (
+          <div className="text-center mt-2">
+            <button
+              onClick={handleSurrender}
+              disabled={sending}
+              className="text-xs text-gray-300 hover:text-red-400 transition-colors py-1 px-2
+                disabled:opacity-50"
+            >
+              🏳️ 投降，告诉我答案
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Result Modal */}
       {showResult && (
         <GuessResultModal
           figureName={resultFigure}
-          guessedBy={resultGuessedBy}
+          guessedBy={isSurrender ? '' : resultGuessedBy}
           questionCount={session?.question_count || questions.length}
+          isSurrender={isSurrender}
           onNewGame={handleNewGame}
           onGoHome={() => router.push('/')}
         />
