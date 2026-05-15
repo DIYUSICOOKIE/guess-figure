@@ -44,6 +44,7 @@ export default function HomePage() {
       setShowWelcome(false);
     } else {
       setShowWelcome(true);
+      setLoading(false);
     }
   }, []);
 
