@@ -36,6 +36,8 @@ export default function HomePage() {
   const [selectedFigure, setSelectedFigure] = useState<GuessedFigureSummary | null>(null);
   const [historyQuestions, setHistoryQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
+  const [initError, setInitError] = useState('');
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     const saved = loadProfile();
@@ -52,25 +54,41 @@ export default function HomePage() {
     saveProfile(p);
     setProfile(p);
     setShowWelcome(false);
+    setLoading(true);
+    setInitError('');
   }, []);
 
+  // Run init when profile becomes available
   useEffect(() => {
     if (!profile) return;
+    let cancelled = false;
 
-    async function init() {
+    async function run() {
+      setLoading(true);
+      setInitError('');
+
       try {
         const res = await fetch('/api/new-game', { method: 'POST' });
         const data = await res.json();
-        if (data.session) setCurrentGame(data.session);
 
-        const { data: completed } = await supabase
+        if (!res.ok || data.error) {
+          throw new Error(data.error || '服务器错误');
+        }
+
+        if (!cancelled && data.session) {
+          setCurrentGame(data.session);
+        }
+
+        const { data: completed, error: historyErr } = await supabase
           .from('game_state')
           .select('id, current_figure, question_count, guessed_by, created_at')
           .eq('status', 'completed')
           .order('created_at', { ascending: false })
           .limit(20);
 
-        if (completed) {
+        if (historyErr) console.error('History query error:', historyErr);
+
+        if (!cancelled && completed) {
           setHistory(
             completed.map((r) => ({
               id: r.id,
@@ -82,14 +100,19 @@ export default function HomePage() {
           );
         }
       } catch (err) {
-        console.error('Init error:', err);
+        if (!cancelled) {
+          const msg = err instanceof Error ? err.message : '未知错误';
+          console.error('Init error:', msg);
+          setInitError(msg);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
 
-    init();
-  }, [profile]);
+    run();
+    return () => { cancelled = true; };
+  }, [profile, retryKey]);
 
   // Realtime: game_state changes
   useEffect(() => {
@@ -143,61 +166,81 @@ export default function HomePage() {
     setSelectedFigure(figure);
   }, []);
 
+  // New user: just show welcome modal on clean background
+  if (!profile && showWelcome) {
+    return (
+      <div className="min-h-screen bg-[#fefce8]">
+        <WelcomeModal onDone={handleProfileDone} />
+      </div>
+    );
+  }
+
+  // Loading
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-[#fefce8]">
         <div className="text-center text-gray-400">
           <div className="w-8 h-8 border-3 border-amber-200 border-t-amber-400 rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-sm">加载中...</p>
+          <p className="text-sm">正在连接...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <>
-      {showWelcome && <WelcomeModal onDone={handleProfileDone} />}
-
-      <div className="min-h-screen px-4 py-6 max-w-lg mx-auto">
-        {/* Top bar */}
-        <div className="flex items-center justify-between mb-8 text-sm text-gray-400">
-          <span className="font-medium text-gray-500">
-            {profile?.avatar} {profile?.nickname}
+    <div className="min-h-screen px-4 py-6 max-w-lg mx-auto">
+      {/* Top bar */}
+      <div className="flex items-center justify-between mb-8 text-sm text-gray-400">
+        <span className="font-medium text-gray-500">
+          {profile?.avatar} {profile?.nickname}
+        </span>
+        <div className="flex gap-4">
+          <span>猜对 {history.length}</span>
+          <span>
+            提问{' '}
+            {history.reduce((s, h) => s + h.question_count, 0) +
+              (currentGame?.question_count || 0)}
           </span>
-          <div className="flex gap-4">
-            <span>猜对 {history.length}</span>
-            <span>
-              提问{' '}
-              {history.reduce((s, h) => s + h.question_count, 0) +
-                (currentGame?.question_count || 0)}
+        </div>
+      </div>
+
+      {/* Error */}
+      {initError && (
+        <div className="mb-6 p-4 bg-red-50 rounded-xl text-center">
+          <p className="text-red-500 text-sm mb-3">加载失败：{initError}</p>
+          <button
+            onClick={() => setRetryKey((k) => k + 1)}
+            className="px-6 py-2 bg-red-500 text-white rounded-lg text-sm font-medium
+              hover:bg-red-600 active:scale-95 transition-all"
+          >
+            重试
+          </button>
+        </div>
+      )}
+
+      {/* Current Game */}
+      {currentGame ? (
+        <div className="mb-10">
+          <GameCard
+            questionCount={currentGame.question_count}
+            onClick={() => router.push('/play')}
+          />
+        </div>
+      ) : (
+        <div className="mb-10 text-center">
+          <div className="w-full aspect-square max-w-[280px] mx-auto rounded-3xl
+            bg-white border border-dashed border-gray-200
+            flex flex-col items-center justify-center text-gray-300">
+            <span className="text-5xl mb-3">🎉</span>
+            <span className="text-sm">
+              {initError ? '请点击上方重试按钮' : '有新题目时将自动出现'}
             </span>
           </div>
         </div>
+      )}
 
-        {/* Current Game */}
-        {currentGame ? (
-          <div className="mb-10">
-            <GameCard
-              questionCount={currentGame.question_count}
-              onClick={() => router.push('/play')}
-            />
-          </div>
-        ) : (
-          <div className="mb-10 text-center">
-            <div
-              className="w-full aspect-square max-w-[280px] mx-auto rounded-3xl
-              bg-white border border-dashed border-gray-200
-              flex flex-col items-center justify-center text-gray-300"
-            >
-              <span className="text-5xl mb-3">🎉</span>
-              <span className="text-sm">等待新题目...</span>
-            </div>
-          </div>
-        )}
-
-        {/* History */}
-        <HistoryList figures={history} onSelect={handleSelectFigure} />
-      </div>
+      {/* History */}
+      <HistoryList figures={history} onSelect={handleSelectFigure} />
 
       {selectedFigure && (
         <HistoryModal
@@ -206,6 +249,6 @@ export default function HomePage() {
           onClose={() => setSelectedFigure(null)}
         />
       )}
-    </>
+    </div>
   );
 }
