@@ -4,8 +4,12 @@ import { generateFigure } from '@/lib/ai';
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { force = false } = body || {};
+    let body: Record<string, unknown> = {};
+    try {
+      const text = await req.text();
+      if (text) body = JSON.parse(text);
+    } catch { /* empty body is ok */ }
+    const { force = false } = body;
 
     const supabase = getServerClient();
 
