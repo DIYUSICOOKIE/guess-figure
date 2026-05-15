@@ -47,7 +47,8 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (error) {
-      return NextResponse.json({ error: '创建游戏失败' }, { status: 500 });
+      console.error('Supabase insert error:', JSON.stringify(error));
+      return NextResponse.json({ error: `创建游戏失败: ${error.message || error.code || 'unknown'}` }, { status: 500 });
     }
 
     return NextResponse.json({
